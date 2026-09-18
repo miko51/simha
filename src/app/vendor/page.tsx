@@ -9,7 +9,6 @@ import Link from "next/link";
 const CATS = Object.keys(VENDOR_LABELS) as VendorCategory[];
 
 export default function VendorPage() {
-  const sb = createClient();
   const [vendor, setVendor] = useState<Partial<Vendor>>({
     name: "",
     categories: [],
@@ -25,6 +24,7 @@ export default function VendorPage() {
   const [email, setEmail] = useState("");
 
   useEffect(() => {
+    const sb = createClient();
     (async () => {
       const { data: u } = await sb.auth.getUser();
       setEmail(u.user?.email || "");
@@ -37,9 +37,10 @@ export default function VendorPage() {
         setStatus(sub?.status || "none");
       }
     })();
-  }, [sb]);
+  }, []);
 
   async function save() {
+    const sb = createClient();
     const { data: u } = await sb.auth.getUser();
     if (!u.user) return;
     const city = FR_CITIES.find((c) => c.name === vendor.city);

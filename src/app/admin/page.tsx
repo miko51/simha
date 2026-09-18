@@ -6,7 +6,6 @@ import Link from "next/link";
 import type { Synagogue, Vendor } from "@/lib/types";
 
 export default function AdminPage() {
-  const sb = createClient();
   const [ok, setOk] = useState<boolean | null>(null);
   const [synas, setSynas] = useState<Synagogue[]>([]);
   const [vendors, setVendors] = useState<(Vendor & { listed?: boolean })[]>([]);
@@ -18,6 +17,7 @@ export default function AdminPage() {
   const [msg, setMsg] = useState("");
 
   useEffect(() => {
+    const sb = createClient();
     (async () => {
       const { data: u } = await sb.auth.getUser();
       if (!u.user) return;
@@ -38,7 +38,7 @@ export default function AdminPage() {
       setSubs((sub.data as { vendor_id: string; status: string }[]) || []);
       setSuggestions((sug.data as typeof suggestions) || []);
     })();
-  }, [sb]);
+  }, []);
 
   if (ok === false)
     return (
@@ -48,14 +48,16 @@ export default function AdminPage() {
     );
   if (ok === null) return <div className="p-8">Chargement…</div>;
 
+  const sb = () => createClient();
+
   async function addSyn() {
-    const { error } = await sb.from("synagogues").insert({ ...form, status: "approved" });
+    const { error } = await sb().from("synagogues").insert({ ...form, status: "approved" });
     setMsg(error ? error.message : "Synagogue ajoutée.");
-    const { data } = await sb.from("synagogues").select("*").order("city");
+    const { data } = await sb().from("synagogues").select("*").order("city");
     setSynas((data as Synagogue[]) || []);
   }
   async function addHall() {
-    const { error } = await sb.from("halls").insert({
+    const { error } = await sb().from("halls").insert({
       synagogue_id: hall.synagogue_id,
       name: hall.name,
       capacity: +hall.capacity || 0,
@@ -69,8 +71,8 @@ export default function AdminPage() {
     setMsg(j.error || `${j.imported} lignes importées`);
   }
   async function approve(id: string, name: string, city: string, notes: string | null) {
-    await sb.from("synagogues").insert({ name, city, notes, status: "approved" });
-    await sb.from("synagogue_suggestions").update({ status: "approved" }).eq("id", id);
+    await sb().from("synagogues").insert({ name, city, notes, status: "approved" });
+    await sb().from("synagogue_suggestions").update({ status: "approved" }).eq("id", id);
     setSuggestions((s) => s.filter((x) => x.id !== id));
   }
 
