@@ -84,3 +84,162 @@ input, select, textarea {
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
 .eyebrow { font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--gold); font-weight: 600; }
 .chip { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+
+.chat-link {
+  color: var(--tekhelet);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.rav-fab {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 60;
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  padding: 0;
+  border: 3px solid #fff;
+  box-shadow: 0 10px 28px rgba(44, 91, 143, 0.35);
+  cursor: pointer;
+  background: linear-gradient(180deg, #f6efdf, #fff);
+}
+.rav-fab-ring {
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 2px solid rgba(168, 127, 47, 0.45);
+  animation: rav-pulse 2.4s ease-out infinite;
+  pointer-events: none;
+}
+.rav-peek {
+  position: fixed;
+  right: 96px;
+  bottom: 28px;
+  z-index: 60;
+  background: #17223b;
+  color: #fff;
+  border: none;
+  border-radius: 18px 18px 6px 18px;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 650;
+  box-shadow: 0 8px 20px rgba(23, 34, 59, 0.25);
+  cursor: pointer;
+  max-width: 220px;
+  text-align: left;
+}
+.rav-panel {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 70;
+  width: min(400px, calc(100vw - 24px));
+  height: min(640px, calc(100vh - 32px));
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  overflow: hidden;
+  box-shadow: 0 24px 60px rgba(23, 34, 59, 0.22);
+}
+.rav-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  background: linear-gradient(135deg, #2c5b8f, #1d3d64 55%, #a87f2f);
+  color: #fff;
+}
+.rav-close {
+  margin-left: auto;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+  font-size: 22px;
+  cursor: pointer;
+}
+.rav-body {
+  flex: 1;
+  overflow: auto;
+  padding: 14px;
+  display: grid;
+  gap: 12px;
+  background:
+    radial-gradient(circle at 10% 0%, rgba(246, 239, 223, 0.9), transparent 50%),
+    var(--ground);
+}
+.rav-welcome {
+  text-align: center;
+  padding: 12px 8px 4px;
+}
+.rav-chip {
+  font-size: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 999px;
+  padding: 6px 10px;
+  cursor: pointer;
+  text-align: left;
+}
+.rav-chip:hover { border-color: var(--gold); color: var(--tekhelet); }
+.rav-msg { display: flex; gap: 8px; align-items: flex-end; }
+.rav-msg.mine { justify-content: flex-end; }
+.rav-bubble {
+  max-width: 82%;
+  border-radius: 16px;
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+.rav-msg.mine .rav-bubble {
+  background: var(--tekhelet);
+  color: #fff;
+  border-color: var(--tekhelet);
+  border-bottom-right-radius: 6px;
+}
+.rav-msg.rav .rav-bubble { border-bottom-left-radius: 6px; }
+.rav-typing { display: flex; gap: 5px; align-items: center; min-height: 22px; }
+.rav-typing span {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--gold);
+  animation: rav-dot 1s infinite ease-in-out;
+}
+.rav-typing span:nth-child(2) { animation-delay: .15s; }
+.rav-typing span:nth-child(3) { animation-delay: .3s; }
+.rav-nod { animation: rav-bob 1s ease-in-out infinite; }
+.rav-form {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  padding: 10px;
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+}
+.rav-form textarea { resize: none; border-radius: 12px; }
+.rav-foot {
+  font-size: 11px;
+  color: var(--muted);
+  padding: 0 12px 10px;
+}
+@keyframes rav-pulse {
+  0% { transform: scale(1); opacity: .8; }
+  100% { transform: scale(1.18); opacity: 0; }
+}
+@keyframes rav-dot {
+  0%, 80%, 100% { transform: translateY(0); opacity: .35; }
+  40% { transform: translateY(-4px); opacity: 1; }
+}
+@keyframes rav-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+@media (max-width: 520px) {
+  .rav-peek { display: none; }
+  .rav-panel { right: 8px; bottom: 8px; height: min(100vh - 16px, 700px); width: calc(100vw - 16px); }
+}

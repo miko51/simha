@@ -11,6 +11,10 @@ import { FIND_VENDOR_LABEL, GUEST_GROUPS, VENDOR_LABELS, vendorCategoriesForItem
 import { directoryHref } from "@/lib/vendors";
 import VendorCard from "@/components/vendors/VendorCard";
 import type { CalendarReading } from "@/lib/hebcal";
+import { useChat } from "@/components/chat/ChatProvider";
+import RabbiAvatar from "@/components/chat/RabbiAvatar";
+import MarkdownMessage from "@/components/chat/MarkdownMessage";
+import { groupMessagesByDay } from "@/lib/chat";
 
 const TABS = [
   ["budget", "Budget"],
@@ -55,15 +59,13 @@ export default function Workspace({
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<"editor" | "viewer">("editor");
   const [inviteMsg, setInviteMsg] = useState("");
-  const [aiInput, setAiInput] = useState("");
-  const [aiMsgs, setAiMsgs] = useState<{ role: string; content: string }[]>([]);
-  const [aiBusy, setAiBusy] = useState(false);
   const [payEv, setPayEv] = useState("");
   const [payHide, setPayHide] = useState(false);
   const [gSearch, setGSearch] = useState("");
   const [gFGroup, setGFGroup] = useState("");
   const [suggest, setSuggest] = useState({ name: "", city: event.city, notes: "" });
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const { messages: aiMsgs, setOpen: setChatOpen, busy: aiBusy } = useChat();
 
   const dates: EventDates = useMemo(
     () => ({
@@ -118,11 +120,10 @@ export default function Workspace({
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const [st, gs, vend, msgs] = await Promise.all([
+      const [st, gs, vend] = await Promise.all([
         sb.from("app_state").select("key,data").eq("event_id", event.id),
         sb.from("guests").select("id,data").eq("event_id", event.id),
         sb.from("vendors").select("*"),
-        sb.from("ai_messages").select("role,content").eq("event_id", event.id).order("created_at", { ascending: true }).limit(40),
       ]);
       if (cancelled) return;
       const budget = st.data?.find((r) => r.key === "budget")?.data as BudgetState | undefined;
@@ -136,7 +137,6 @@ export default function Workspace({
       gs.data?.forEach((r) => (guests[r.id] = r.data as GuestData));
       setG(guests);
       setVendors((vend.data as Vendor[]) || []);
-      setAiMsgs((msgs.data as { role: string; content: string }[]) || []);
       setReady(true);
       setSync("Tout est enregistré · synchronisé en direct");
     })();
@@ -227,27 +227,11 @@ export default function Workspace({
     if (j.url) setInviteEmail("");
   }
 
-  async function askAi() {
-    const q = aiInput.trim();
-    if (!q) return;
-    setAiBusy(true);
-    setAiMsgs((m) => [...m, { role: "user", content: q }]);
-    setAiInput("");
-    const r = await fetch("/api/ai/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ event_id: event.id, message: q }),
-    });
-    const j = await r.json();
-    setAiMsgs((m) => [...m, { role: "assistant", content: j.reply || j.error || "Pas de réponse." }]);
-    setAiBusy(false);
-  }
-
   const pe = calc.total ? Math.min(100, (calc.eng / calc.total) * 100) : 0;
   const pp = calc.total ? Math.min(100, (calc.paid / calc.total) * 100) : 0;
 
   return (
-    <div className="max-w-[1080px] mx-auto px-4 pb-16">
+    <div className="max-w-[1080px] mx-auto px-4 pb-28">
       <header className="pt-8 pb-5">
         <div className="flex justify-between gap-3 flex-wrap">
           <p className="eyebrow">Plan de préparation · {event.kind === "bat" ? "bat" : "bar"} mitzvah</p>
@@ -628,20 +612,50 @@ export default function Workspace({
               </ul>
             </div>
           )}
-          <div className="card p-4 grid gap-3">
-            <div className="max-h-96 overflow-auto grid gap-2">
-              {aiMsgs.map((m, i) => (
-                <div key={i} className={`p-3 rounded-lg ${m.role === "user" ? "bg-[var(--tekhelet-soft)]" : "bg-[var(--ground)]"}`}>
-                  <div className="text-xs text-[var(--muted)]">{m.role === "user" ? "Vous" : "Assistant"}</div>
-                  <div className="whitespace-pre-wrap text-sm">{m.content}</div>
-                </div>
-              ))}
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <div className="flex items-center gap-3">
+              <RabbiAvatar size={52} />
+              <div>
+                <h2 className="text-xl">Journal de Rav Simha</h2>
+                <p className="text-sm text-[var(--muted)]">Tout ce que vous lui avez demandé, ici et depuis la bulle.</p>
+              </div>
             </div>
-            <textarea rows={3} value={aiInput} disabled={!canEdit || aiBusy} onChange={(e) => setAiInput(e.target.value)} placeholder="Ex. Cette date tombe-t-elle dans le Omer ? Quelle paracha lira-t-il ?" />
-            <button className="btn" disabled={!canEdit || aiBusy} onClick={askAi}>
-              {aiBusy ? "Réflexion…" : "Demander"}
+            <button type="button" className="btn" onClick={() => setChatOpen(true)}>
+              Continuer le chat
             </button>
-            <p className="text-xs text-[var(--muted)]">40 messages / jour / événement. L’IA ne remplace pas un rabbin. Les horaires viennent de Hebcal.</p>
+          </div>
+          <div className="card p-4 grid gap-5">
+            {aiMsgs.length === 0 && (
+              <p className="text-sm text-[var(--muted)]">
+                Encore aucune conversation. Cliquez sur le petit rav en bas à droite — ou sur « Continuer le chat ».
+              </p>
+            )}
+            {groupMessagesByDay(aiMsgs).map((g) => (
+              <div key={g.label}>
+                <p className="eyebrow mb-2">{g.label}</p>
+                <div className="grid gap-2">
+                  {g.items.map((m, i) => (
+                    <div key={m.id || i} className={`p-3 rounded-xl ${m.role === "user" ? "bg-[var(--tekhelet-soft)] ml-8" : "bg-[var(--ground)] mr-8"}`}>
+                      <div className="text-xs text-[var(--muted)] mb-1 flex justify-between gap-2">
+                        <span>{m.role === "user" ? "Vous" : "Rav Simha"}</span>
+                        {m.created_at && (
+                          <span>
+                            {new Date(m.created_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+                          </span>
+                        )}
+                      </div>
+                      {m.role === "user" ? (
+                        <div className="whitespace-pre-wrap text-sm">{m.content}</div>
+                      ) : (
+                        <MarkdownMessage text={m.content} />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+            {aiBusy && <p className="text-sm text-[var(--gold)]">Le petit Rav réfléchit…</p>}
+            <p className="text-xs text-[var(--muted)]">40 messages / jour. L’IA ne remplace pas un rabbin. Les horaires viennent de Hebcal.</p>
           </div>
         </section>
       )}
