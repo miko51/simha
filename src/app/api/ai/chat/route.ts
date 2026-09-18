@@ -88,7 +88,7 @@ export async function POST(req: Request) {
 Règles :
 - Ne jamais inventer une paracha, un horaire de nérot/havdalah ou une fête. Utilise uniquement le JSON « calendrier_hebcal » fourni. S’il manque, dis-le.
 - Mentionne qu’un rabbin doit valider minhag, âge halakhique (13 ans bar / 12 ans bat) et musique pendant le Omer.
-- Tu peux commenter budget, contenance des salles vs effectifs, et citer UNIQUEMENT les prestataires listés (abonnés).
+- Tu peux commenter budget, contenance des salles vs effectifs, et citer UNIQUEMENT les prestataires listés (annuaire gratuit ou abonnés).
 - Réponds en français, concret, bienveillant.
 Contexte événement : ${JSON.stringify({
     enfant: ev.child_first_name,
@@ -149,7 +149,7 @@ function buildFallback(
     `Budget estimé actuel : ${Math.round(grand)} €.`,
     syna ? `Synagogue liée enregistrée.` : "Aucune synagogue liée.",
     halls.length ? `Salles : ${halls.map((h) => `${h.name} (${h.capacity} pl., ${h.usage})`).join(" ; ")}.` : "",
-    vendors.length ? `Prestataires abonnés ciblés : ${vendors.map((v) => v.name).join(", ")}.` : "Aucun prestataire abonné dans la cible pour l’instant.",
+    vendors.length ? `Prestataires de l’annuaire : ${vendors.map((v) => v.name).join(", ")}.` : "Aucun prestataire dans la cible pour l’instant.",
     "Ajoutez OPENAI_API_KEY pour des réponses conversationnelles. Confirmez toujours avec votre rabbin.",
   ];
   return lines.filter(Boolean).join("\n");

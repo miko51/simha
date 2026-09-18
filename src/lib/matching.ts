@@ -18,11 +18,8 @@ export function vendorMatches(v: Vendor, event: EventRow, category?: string) {
   if (envelope && v.price_min && v.price_min > envelope) return false;
   if (event.lat != null && event.lng != null && v.lat != null && v.lng != null) {
     const d = haversineKm({ lat: event.lat, lng: event.lng }, { lat: v.lat, lng: v.lng });
-    if (d > (v.radius_km || 30)) return false;
+    if (d > Math.max(v.radius_km || 30, 60)) return false;
     return { ...v, distanceKm: Math.round(d) };
-  }
-  if (event.city && v.city && event.city.toLowerCase() !== v.city.toLowerCase()) {
-    return false;
   }
   return { ...v, distanceKm: null as number | null };
 }

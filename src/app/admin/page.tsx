@@ -168,7 +168,7 @@ export default function AdminPage() {
           const st = subs.find((s) => s.vendor_id === v.id)?.status || "sans abo";
           return (
             <div key={v.id} className="card p-3 mt-2">
-              <b>{v.name}</b> · {v.city} · {st}
+              <b>{v.name}</b> · {v.city} · {v.free_listing ? "annuaire gratuit" : st}
               <div className="text-sm text-[var(--muted)]">{(v.categories || []).join(", ")}</div>
             </div>
           );

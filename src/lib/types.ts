@@ -14,7 +14,8 @@ export type VendorCategory =
   | "video"
   | "animation"
   | "gateau"
-  | "logistique";
+  | "logistique"
+  | "sofer";
 
 export type Profile = {
   id: string;
@@ -74,7 +75,7 @@ export type Hall = {
 
 export type Vendor = {
   id: string;
-  user_id: string;
+  user_id: string | null;
   name: string;
   categories: string[];
   city: string | null;
@@ -89,6 +90,7 @@ export type Vendor = {
   phone: string | null;
   photos: string[];
   moderated: boolean;
+  free_listing?: boolean;
 };
 
 export type GuestData = {
@@ -128,7 +130,71 @@ export const VENDOR_LABELS: Record<VendorCategory, string> = {
   animation: "Animation",
   gateau: "Pièce montée",
   logistique: "Logistique",
+  sofer: "Sofer / tefilin",
 };
+
+/** Catégorie d’annuaire pour un poste budget (id du poste, ex. tefilin, traiteur). */
+export const BUDGET_VENDOR_CATEGORY: Record<string, VendorCategory> = {
+  tefilin: "sofer",
+  talit: "sofer",
+  pdj: "traiteur",
+  kid: "traiteur",
+  dej: "traiteur",
+  traiteur: "traiteur",
+  boissons: "traiteur",
+  mat: "logistique",
+  photo1: "photo",
+  photo2: "photo",
+  film: "video",
+  salle: "salle",
+  gateau: "gateau",
+  dj: "dj",
+  live: "dj",
+  entree: "animation",
+  ados: "animation",
+  fleurs: "fleuriste",
+  sceno: "deco",
+  logistique: "logistique",
+  serv: "logistique",
+  vais: "logistique",
+};
+
+export const FIND_VENDOR_LABEL: Record<VendorCategory, string> = {
+  salle: "Trouver une salle",
+  traiteur: "Trouver un traiteur",
+  dj: "Trouver un DJ",
+  deco: "Trouver un décorateur",
+  fleuriste: "Trouver un fleuriste",
+  photo: "Trouver un photographe",
+  video: "Trouver un vidéaste",
+  animation: "Trouver une animation",
+  gateau: "Trouver une pâtisserie",
+  logistique: "Trouver un prestataire logistique",
+  sofer: "Trouver un sofer",
+};
+
+export function vendorCategoryForItem(itemId: string, label?: string): VendorCategory | null {
+  if (BUDGET_VENDOR_CATEGORY[itemId]) return BUDGET_VENDOR_CATEGORY[itemId];
+  const t = (label || "").toLowerCase();
+  if (/tefilin|talit|sofer/.test(t)) return "sofer";
+  if (/traiteur|petit-d[ée]j|kiddouch|d[ée]jeuner|boisson/.test(t)) return "traiteur";
+  if (/photo/.test(t)) return "photo";
+  if (/vid[ée]o|film/.test(t)) return "video";
+  if (/\bdj\b|sono|violon|live/.test(t)) return "dj";
+  if (/fleur/.test(t)) return "fleuriste";
+  if (/d[ée]co|sc[ée]no/.test(t)) return "deco";
+  if (/g[âa]teau|candy|pi[èe]ce mont/.test(t)) return "gateau";
+  if (/salle|location de la salle/.test(t)) return "salle";
+  if (/animation|ados|chaise|percussion/.test(t)) return "animation";
+  if (/voiturier|vestiaire|nappage|table/.test(t)) return "logistique";
+  return null;
+}
+
+export function vendorCategoriesForItem(itemId: string, label?: string): VendorCategory[] {
+  if (itemId === "photo2") return ["photo", "video"];
+  const cat = vendorCategoryForItem(itemId, label);
+  return cat ? [cat] : [];
+}
 
 export const GUEST_GROUPS = [
   "Famille paternelle",

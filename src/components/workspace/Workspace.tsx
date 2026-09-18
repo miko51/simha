@@ -7,7 +7,7 @@ import { EVS, FORMS, QK, buildDays, buildPlan, type EventDates } from "@/lib/tem
 import { DEF_BUDGET, allPay, ensurePay, lineOf, lineTotal, qtyOf, rebuild, totals, type ItemRow } from "@/lib/planning";
 import { countdown, eur, fmtDate, nid } from "@/lib/money";
 import { rankVendors } from "@/lib/matching";
-import { GUEST_GROUPS, VENDOR_LABELS, type BudgetState, type EventRow, type GuestData, type Hall, type MemberRole, type PayState, type Profile, type Synagogue, type TaskState, type Vendor, type VendorCategory } from "@/lib/types";
+import { FIND_VENDOR_LABEL, GUEST_GROUPS, VENDOR_LABELS, vendorCategoriesForItem, type BudgetState, type EventRow, type GuestData, type Hall, type MemberRole, type PayState, type Profile, type Synagogue, type TaskState, type Vendor, type VendorCategory } from "@/lib/types";
 import type { CalendarReading } from "@/lib/hebcal";
 
 const TABS = [
@@ -384,11 +384,33 @@ export default function Workspace({
                     {g.items.map((it: ItemRow) => {
                       const k = it[7] as string;
                       const L = lineOf(B, it);
+                      const vendorCats = vendorCategoriesForItem(String(it[0]), String(it[1]));
                       return (
                         <tr key={k} className="border-t border-[var(--line)]">
                           <td className="p-2">
                             {it[1]}
                             {it[4] ? <span className="block text-xs text-[var(--muted)]">{it[4]}</span> : null}
+                            {vendorCats.length > 0 && (
+                              <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1">
+                                {vendorCats.map((c) => {
+                                  const n = rankVendors(vendors, event, c).length;
+                                  return (
+                                    <button
+                                      key={c}
+                                      type="button"
+                                      className="text-xs font-semibold text-[var(--tekhelet)] hover:underline"
+                                      onClick={() => {
+                                        setVCat(c);
+                                        setTab("vendors");
+                                      }}
+                                    >
+                                      {FIND_VENDOR_LABEL[c]}
+                                      {n > 0 ? ` (${n})` : ""}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            )}
                           </td>
                           <td className="p-2 text-right">
                             {typeof it[2] === "string" ? `${qtyOf(B, it, L) || 0} pers.` : (
@@ -502,7 +524,9 @@ export default function Workspace({
       {tab === "vendors" && (
         <section className="mt-5">
           <p className="text-sm text-[var(--muted)] mb-3">
-            Partenaires abonnés, filtrés selon {event.city}, l’enveloppe {event.budget_envelope ? eur(event.budget_envelope) : "non fixée"} et la kasherut {event.kosher}.
+            Annuaire gratuit et partenaires abonnés, filtrés selon {event.city}
+            {event.budget_envelope ? `, l’enveloppe ${eur(event.budget_envelope)}` : ""}
+            {event.kosher ? ` et la kasherut ${event.kosher}` : ""}.
           </p>
           <select value={vCat} onChange={(e) => setVCat(e.target.value as typeof vCat)} className="mb-4">
             <option value="">Toutes les catégories</option>
@@ -513,23 +537,37 @@ export default function Workspace({
             ))}
           </select>
           <div className="grid md:grid-cols-2 gap-3">
-            {matched.length === 0 && <p className="text-[var(--muted)]">Aucun prestataire abonné ne correspond encore. Ils apparaîtront ici dès qu’ils souscriront.</p>}
+            {matched.length === 0 && (
+              <p className="text-[var(--muted)]">
+                Aucun prestataire dans cette catégorie pour l’instant. Elargissez le filtre ou revenez plus tard : les fiches gratuites et les abonnés apparaissent ici.
+              </p>
+            )}
             {matched.map((v) => (
               <div key={v.id} className="card p-4">
-                <b>{v.name}</b>
+                <div className="flex items-start justify-between gap-2">
+                  <b>{v.name}</b>
+                  <span className="chip bg-[var(--gold-soft)] text-[var(--gold)]">{v.free_listing ? "Gratuit" : "Partenaire"}</span>
+                </div>
                 <div className="text-sm text-[var(--muted)]">
                   {v.categories.map((c) => VENDOR_LABELS[c as VendorCategory] || c).join(" · ")} · {v.city}
                   {v.distanceKm != null ? ` · ${v.distanceKm} km` : ""}
                 </div>
                 <p className="text-sm mt-2">{v.description}</p>
                 <p className="text-sm mt-1">
-                  {v.price_min ? `À partir de ${eur(v.price_min)}` : ""} {v.kasherut}
+                  {v.price_min ? `À partir de ${eur(v.price_min)}` : ""} {v.kasherut ? ` · ${v.kasherut.replace("_", " ")}` : ""}
                 </p>
-                {v.website && (
-                  <a className="text-[var(--tekhelet)] text-sm" href={v.website} target="_blank" rel="noreferrer">
-                    Site
-                  </a>
-                )}
+                <div className="mt-2 flex flex-wrap gap-3 text-sm">
+                  {v.phone && (
+                    <a className="text-[var(--tekhelet)] font-semibold" href={`tel:${v.phone.replace(/\s/g, "")}`}>
+                      {v.phone}
+                    </a>
+                  )}
+                  {v.website && (
+                    <a className="text-[var(--tekhelet)]" href={v.website} target="_blank" rel="noreferrer">
+                      Site
+                    </a>
+                  )}
+                </div>
               </div>
             ))}
           </div>
