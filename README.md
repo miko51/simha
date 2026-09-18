@@ -34,8 +34,21 @@ Migrations dans `supabase/migrations/`. Projet cloud : `simha` (`jgqwqebwfwrtqhc
 
 Colonnes : `name,city,address,rite,hall,capacity,usage` — depuis `/admin`.
 
-## Déploiement Vercel
+## Déploiement
 
-Créer un projet lié au repo, coller les variables d’environnement, webhook Stripe vers `/api/stripe/webhook`.
+Production : [https://simha-ivory.vercel.app](https://simha-ivory.vercel.app)  
+Repo : [https://github.com/miko51/simha](https://github.com/miko51/simha)  
+Supabase : projet `simha` (`jgqwqebwfwrtqhcbvrso`, eu-west-3).
+
+Dans **Authentication → URL configuration** du projet Supabase, ajouter :
+- Site URL : `https://simha-ivory.vercel.app`
+- Redirect : `https://simha-ivory.vercel.app/auth/callback` et `http://localhost:3000/auth/callback`
+
+Variables encore à coller dans Vercel (dashboard) pour activer l’IA et les abos prestataires :
+`OPENAI_API_KEY`, `STRIPE_SECRET_KEY`, `STRIPE_PRICE_ID`, `STRIPE_WEBHOOK_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`.
+
+Webhook Stripe : `https://simha-ivory.vercel.app/api/stripe/webhook`
+
+Pour devenir admin : `update public.profiles set role = 'admin' where email = 'vous@exemple.com';`
 
 L’app privée Raphaël (`BM_raph`) n’est pas modifiée.
