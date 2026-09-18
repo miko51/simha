@@ -11,9 +11,11 @@ export default async function AppHome() {
   if (!user) redirect("/login");
   const { data: profile } = await sb.from("profiles").select("*").eq("id", user.id).maybeSingle();
   const p = profile as Profile | null;
-  if (p?.role === "vendor") redirect("/vendor");
-
   const { data: mems } = await sb.from("memberships").select("event_id, role, events(*)").eq("user_id", user.id);
+  if (p?.role === "vendor") {
+    const hasEvents = (mems || []).length > 0;
+    if (!hasEvents) redirect("/vendor");
+  }
   const events = (mems || []).map((m: { event_id: string; role: string; events: EventRow | EventRow[] | null }) => ({
     role: m.role,
     event: Array.isArray(m.events) ? m.events[0] : m.events,
@@ -55,6 +57,12 @@ export default async function AppHome() {
       </div>
       <Link href="/onboarding" className="btn mt-6 inline-flex">
         Créer un événement
+      </Link>
+      <Link href="/vendor" className="btn btn-gold mt-6 inline-flex ml-3">
+        Ma page prestataire
+      </Link>
+      <Link href="/prestataires" className="btn btn-ghost mt-6 inline-flex ml-3">
+        Annuaire
       </Link>
       {p?.role === "admin" && (
         <Link href="/admin" className="btn btn-ghost mt-4 inline-flex ml-3">

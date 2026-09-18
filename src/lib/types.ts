@@ -88,6 +88,7 @@ export type Vendor = {
   description: string | null;
   website: string | null;
   phone: string | null;
+  logo_url?: string | null;
   photos: string[];
   moderated: boolean;
   free_listing?: boolean;
@@ -186,7 +187,7 @@ export function vendorCategoryForItem(itemId: string, label?: string): VendorCat
   if (/g[âa]teau|candy|pi[èe]ce mont/.test(t)) return "gateau";
   if (/salle|location de la salle/.test(t)) return "salle";
   if (/animation|ados|chaise|percussion/.test(t)) return "animation";
-  if (/voiturier|vestiaire|nappage|table/.test(t)) return "logistique";
+  if (/voiturier|vestiaire|nappage|\btables\b/.test(t)) return "logistique";
   return null;
 }
 

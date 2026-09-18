@@ -26,24 +26,26 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const path = request.nextUrl.pathname;
-  const isAuth = path.startsWith("/login") || path.startsWith("/auth") || path === "/" || path.startsWith("/invite");
+  const nextPath = path + (request.nextUrl.search || "");
   if (!user && path.startsWith("/app")) {
     const redir = request.nextUrl.clone();
     redir.pathname = "/login";
-    redir.searchParams.set("next", path);
+    redir.search = "";
+    redir.searchParams.set("next", nextPath);
     return NextResponse.redirect(redir);
   }
   if (!user && (path.startsWith("/vendor") || path.startsWith("/admin") || path.startsWith("/onboarding"))) {
     const redir = request.nextUrl.clone();
     redir.pathname = "/login";
-    redir.searchParams.set("next", path);
+    redir.search = "";
+    redir.searchParams.set("role", path.startsWith("/vendor") ? "vendor" : "family");
+    redir.searchParams.set("next", nextPath);
     return NextResponse.redirect(redir);
   }
   if (user && path === "/login") {
-    const redir = request.nextUrl.clone();
-    redir.pathname = "/app";
-    return NextResponse.redirect(redir);
+    const raw = request.nextUrl.searchParams.get("next") || "/app";
+    const dest = raw.startsWith("/") && !raw.startsWith("//") ? raw : "/app";
+    return NextResponse.redirect(new URL(dest, request.url));
   }
-  void isAuth;
   return response;
 }

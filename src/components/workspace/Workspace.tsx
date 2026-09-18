@@ -8,6 +8,8 @@ import { DEF_BUDGET, allPay, ensurePay, lineOf, lineTotal, qtyOf, rebuild, total
 import { countdown, eur, fmtDate, nid } from "@/lib/money";
 import { rankVendors } from "@/lib/matching";
 import { FIND_VENDOR_LABEL, GUEST_GROUPS, VENDOR_LABELS, vendorCategoriesForItem, type BudgetState, type EventRow, type GuestData, type Hall, type MemberRole, type PayState, type Profile, type Synagogue, type TaskState, type Vendor, type VendorCategory } from "@/lib/types";
+import { directoryHref } from "@/lib/vendors";
+import VendorCard from "@/components/vendors/VendorCard";
 import type { CalendarReading } from "@/lib/hebcal";
 
 const TABS = [
@@ -370,10 +372,11 @@ export default function Workspace({
                 <div className="text-xl font-bold">{eur(calc.groupTotals[g.id] || 0)}</div>
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[720px] text-sm">
+                <table className="w-full min-w-[860px] text-sm">
                   <thead>
                     <tr className="text-left text-xs uppercase tracking-wide text-[var(--muted)] bg-[var(--ground)]">
                       <th className="p-2">Poste</th>
+                      <th className="p-2">Prestataires</th>
                       <th className="p-2 text-right">Qté</th>
                       <th className="p-2 text-right">Prix</th>
                       <th className="p-2 text-right">Total</th>
@@ -390,27 +393,17 @@ export default function Workspace({
                           <td className="p-2">
                             {it[1]}
                             {it[4] ? <span className="block text-xs text-[var(--muted)]">{it[4]}</span> : null}
-                            {vendorCats.length > 0 && (
-                              <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1">
-                                {vendorCats.map((c) => {
-                                  const n = rankVendors(vendors, event, c).length;
-                                  return (
-                                    <button
-                                      key={c}
-                                      type="button"
-                                      className="text-xs font-semibold text-[var(--tekhelet)] hover:underline"
-                                      onClick={() => {
-                                        setVCat(c);
-                                        setTab("vendors");
-                                      }}
-                                    >
-                                      {FIND_VENDOR_LABEL[c]}
-                                      {n > 0 ? ` (${n})` : ""}
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            )}
+                          </td>
+                          <td className="p-2 align-top whitespace-nowrap">
+                            {(vendorCats.length ? vendorCats : [null]).map((c) => (
+                              <Link
+                                key={c || "all"}
+                                href={directoryHref(c, event.city)}
+                                className="block text-xs font-semibold text-[var(--tekhelet)] hover:underline"
+                              >
+                                {c ? FIND_VENDOR_LABEL[c] : "Voir l’annuaire"}
+                              </Link>
+                            ))}
                           </td>
                           <td className="p-2 text-right">
                             {typeof it[2] === "string" ? `${qtyOf(B, it, L) || 0} pers.` : (
@@ -523,11 +516,16 @@ export default function Workspace({
 
       {tab === "vendors" && (
         <section className="mt-5">
-          <p className="text-sm text-[var(--muted)] mb-3">
-            Annuaire gratuit et partenaires abonnés, filtrés selon {event.city}
-            {event.budget_envelope ? `, l’enveloppe ${eur(event.budget_envelope)}` : ""}
-            {event.kosher ? ` et la kasherut ${event.kosher}` : ""}.
-          </p>
+          <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
+            <p className="text-sm text-[var(--muted)] max-w-2xl">
+              Suggestions pour {event.city}
+              {event.budget_envelope ? `, enveloppe ${eur(event.budget_envelope)}` : ""}
+              {event.kosher ? `, kasherut ${event.kosher}` : ""}. Chaque fiche ouvre la page complète du prestataire.
+            </p>
+            <Link href={directoryHref(vCat, event.city)} className="btn">
+              Annuaire complet{vCat ? ` · ${VENDOR_LABELS[vCat]}` : ""}
+            </Link>
+          </div>
           <select value={vCat} onChange={(e) => setVCat(e.target.value as typeof vCat)} className="mb-4">
             <option value="">Toutes les catégories</option>
             {Object.entries(VENDOR_LABELS).map(([k, v]) => (
@@ -539,36 +537,14 @@ export default function Workspace({
           <div className="grid md:grid-cols-2 gap-3">
             {matched.length === 0 && (
               <p className="text-[var(--muted)]">
-                Aucun prestataire dans cette catégorie pour l’instant. Elargissez le filtre ou revenez plus tard : les fiches gratuites et les abonnés apparaissent ici.
+                Aucun prestataire dans ce filtre.{" "}
+                <Link href={directoryHref(vCat, event.city)} className="text-[var(--tekhelet)] font-semibold">
+                  Ouvrir l’annuaire
+                </Link>
               </p>
             )}
             {matched.map((v) => (
-              <div key={v.id} className="card p-4">
-                <div className="flex items-start justify-between gap-2">
-                  <b>{v.name}</b>
-                  <span className="chip bg-[var(--gold-soft)] text-[var(--gold)]">{v.free_listing ? "Gratuit" : "Partenaire"}</span>
-                </div>
-                <div className="text-sm text-[var(--muted)]">
-                  {v.categories.map((c) => VENDOR_LABELS[c as VendorCategory] || c).join(" · ")} · {v.city}
-                  {v.distanceKm != null ? ` · ${v.distanceKm} km` : ""}
-                </div>
-                <p className="text-sm mt-2">{v.description}</p>
-                <p className="text-sm mt-1">
-                  {v.price_min ? `À partir de ${eur(v.price_min)}` : ""} {v.kasherut ? ` · ${v.kasherut.replace("_", " ")}` : ""}
-                </p>
-                <div className="mt-2 flex flex-wrap gap-3 text-sm">
-                  {v.phone && (
-                    <a className="text-[var(--tekhelet)] font-semibold" href={`tel:${v.phone.replace(/\s/g, "")}`}>
-                      {v.phone}
-                    </a>
-                  )}
-                  {v.website && (
-                    <a className="text-[var(--tekhelet)]" href={v.website} target="_blank" rel="noreferrer">
-                      Site
-                    </a>
-                  )}
-                </div>
-              </div>
+              <VendorCard key={v.id} vendor={v} />
             ))}
           </div>
         </section>
