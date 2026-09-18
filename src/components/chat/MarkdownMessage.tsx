@@ -1,31 +1,30 @@
 import type { ReactNode } from "react";
-import Link from "next/link";
+import { extractChatLinks, isSafeChatHref, normalizeChatHref, repairChatMarkdown } from "@/lib/chat";
 
-function isSafeHref(href: string) {
-  return /^(https?:\/\/|\/)/i.test(href) && !href.toLowerCase().startsWith("javascript:");
+function ChatAnchor({ href, children }: { href: string; children: ReactNode }) {
+  const h = normalizeChatHref(href);
+  if (!isSafeChatHref(h)) return <>{children}</>;
+  const external = /^https?:\/\//i.test(h);
+  return (
+    <a href={h} className="chat-link" {...(external ? { target: "_blank", rel: "noreferrer" } : {})}>
+      {children}
+    </a>
+  );
 }
 
 function renderInline(text: string, keyPrefix: string): ReactNode[] {
-  const out: React.ReactNode[] = [];
-  const re = /(\[([^\]]+)\]\(([^)]+)\)|\*\*([^*]+)\*\*)/g;
+  const out: ReactNode[] = [];
+  const re = /(\[([^\]]+)\]\(([^)]+)\)|\*\*([^*]+)\*\*|https?:\/\/[^\s)<]+|\/prestataires\/[0-9a-f-]+)/gi;
   let last = 0;
   let m: RegExpExecArray | null;
   let i = 0;
   while ((m = re.exec(text))) {
     if (m.index > last) out.push(text.slice(last, m.index));
-    if (m[2] && m[3] && isSafeHref(m[3].trim())) {
-      const href = m[3].trim();
-      const internal = href.startsWith("/");
+    if (m[2] && m[3]) {
       out.push(
-        internal ? (
-          <Link key={`${keyPrefix}-a-${i}`} href={href} className="chat-link">
-            {m[2]}
-          </Link>
-        ) : (
-          <a key={`${keyPrefix}-a-${i}`} href={href} target="_blank" rel="noreferrer" className="chat-link">
-            {m[2]}
-          </a>
-        ),
+        <ChatAnchor key={`${keyPrefix}-a-${i}`} href={m[3]}>
+          {m[2]}
+        </ChatAnchor>,
       );
     } else if (m[4]) {
       out.push(
@@ -34,7 +33,13 @@ function renderInline(text: string, keyPrefix: string): ReactNode[] {
         </strong>,
       );
     } else {
-      out.push(m[0]);
+      const href = m[0];
+      const label = href.startsWith("/prestataires/") ? "Voir la fiche" : href.replace(/^https?:\/\/[^/]+/, "") || href;
+      out.push(
+        <ChatAnchor key={`${keyPrefix}-u-${i}`} href={href}>
+          {label}
+        </ChatAnchor>,
+      );
     }
     last = m.index + m[0].length;
     i += 1;
@@ -44,11 +49,13 @@ function renderInline(text: string, keyPrefix: string): ReactNode[] {
 }
 
 export default function MarkdownMessage({ text }: { text: string }) {
-  const blocks = text.replace(/\r\n/g, "\n").split("\n");
+  const repaired = repairChatMarkdown(text);
+  const links = extractChatLinks(repaired);
+  const blocks = repaired.split("\n");
   return (
     <div className="text-sm leading-relaxed">
       {blocks.map((line, i) => {
-        const bullet = line.match(/^\s*[-•]\s+(.*)$/);
+        const bullet = line.match(/^\s*(?:[-•]|\d+[.)])\s+(.*)$/);
         const content = bullet ? bullet[1] : line;
         if (!content && i < blocks.length - 1) return <div key={i} className="h-2" />;
         return (
@@ -57,6 +64,20 @@ export default function MarkdownMessage({ text }: { text: string }) {
           </p>
         );
       })}
+      {links.length > 0 && (
+        <div className="chat-link-row">
+          {links.map((l) => {
+            const h = normalizeChatHref(l.href);
+            if (!isSafeChatHref(h)) return null;
+            const external = /^https?:\/\//i.test(h);
+            return (
+              <a key={h} href={h} className="chat-link-btn" {...(external ? { target: "_blank", rel: "noreferrer" } : {})}>
+                {l.label}
+              </a>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

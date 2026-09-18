@@ -4,17 +4,11 @@ import { createClient } from "@/lib/supabase/server";
 import { readingForDate } from "@/lib/hebcal";
 import { rankVendors } from "@/lib/matching";
 import { totals, DEF_BUDGET, ensurePay } from "@/lib/planning";
-import { guessVendorCategories } from "@/lib/chat";
+import { guessVendorCategories, repairChatMarkdown } from "@/lib/chat";
 import { directoryHref, vendorPageHref } from "@/lib/vendors";
 import { VENDOR_LABELS, type BudgetState, type EventRow, type PayState, type Vendor, type VendorCategory } from "@/lib/types";
 
 const DAILY_LIMIT = 40;
-const SITE = process.env.NEXT_PUBLIC_SITE_URL || "https://simha-ivory.vercel.app";
-
-function abs(path: string) {
-  if (path.startsWith("http")) return path;
-  return `${SITE.replace(/\/$/, "")}${path}`;
-}
 
 function vendorCards(list: Vendor[], city?: string | null) {
   return list.map((v) => ({
@@ -23,10 +17,10 @@ function vendorCards(list: Vendor[], city?: string | null) {
     ville: v.city,
     kasher: v.kasherut,
     prix_min: v.price_min,
-    page: abs(vendorPageHref(v.id)),
+    page: vendorPageHref(v.id),
     site: v.website || null,
     telephone: v.phone || null,
-    annuaire: abs(directoryHref((v.categories?.[0] as VendorCategory) || "", city || v.city)),
+    annuaire: directoryHref((v.categories?.[0] as VendorCategory) || "", city || v.city),
   }));
 }
 
@@ -124,10 +118,10 @@ export async function POST(req: Request) {
   }
 
   const cards = vendorCards(listed, ev?.city);
-  const annuaire = abs(directoryHref(cats[0] || "", ev?.city || null));
+  const annuaire = directoryHref(cats[0] || "", ev?.city || null);
 
   if (!process.env.OPENAI_API_KEY) {
-    const fallback = buildFallback(ev, calendar, calcGrand, cards, annuaire, cats);
+    const fallback = repairChatMarkdown(buildFallback(ev, calendar, calcGrand, cards, annuaire, cats));
     if (user) {
       await supabase.from("ai_messages").insert({
         event_id: ev?.id || null,
@@ -145,7 +139,7 @@ Tu tutoyas avec bienveillance, tu peux dire « Shalom », « Yasher koach », ma
 Règles :
 - Ne jamais inventer une paracha, un horaire de nérot/havdalah ou une fête. Utilise uniquement le JSON calendrier_hebcal. S’il manque, dis-le et propose d’ajouter la date de Shabbat.
 - Un vrai rabbin doit valider minhag, âge halakhique (13 ans bar / 12 ans bat) et musique pendant l’Omer.
-- Prestataires : cite UNIQUEMENT ceux du JSON « prestataires ». Quand la question parle d’un métier (traiteur, DJ, photo, sofer, salle, fleurs, déco, gâteau, logistique, animation…), propose 1 à 3 fiches avec des liens markdown [Nom](page). Ajoute aussi [Voir l’annuaire](${annuaire}) si c’est utile. N’invente aucun nom hors liste. Si la liste est vide, oriente vers ${annuaire}.
+- Prestataires : cite UNIQUEMENT ceux du JSON « prestataires ». Quand la question parle d’un métier (traiteur, DJ, photo, sofer, salle, fleurs, déco, gâteau, logistique, animation…), propose 1 à 3 fiches. Chaque lien DOIT être un chemin relatif court sur UNE seule ligne, sans jamais le couper : [Le Jardin Casher](/prestataires/uuid). Ajoute [Voir l’annuaire](${annuaire}) si utile. N’invente aucun nom hors liste. Interdit d’écrire une URL https:// complète.
 - Réponds en français, concret, un peu fun, pas trop long (sauf si on te demande un discours).
 Contexte : ${JSON.stringify({
     connecte: !!user,
@@ -183,7 +177,7 @@ Contexte : ${JSON.stringify({
     ],
     temperature: 0.5,
   });
-  const reply = completion.choices[0]?.message?.content || "Je n’ai pas pu répondre.";
+  const reply = repairChatMarkdown(completion.choices[0]?.message?.content || "Je n’ai pas pu répondre.");
   if (user) {
     await supabase.from("ai_messages").insert({
       event_id: ev?.id || null,
